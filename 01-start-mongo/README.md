@@ -1,57 +1,66 @@
-# Azure で mongo db
+# Azure で MongoDB を利用する
 
-azure で mongo db (document db) を始める
+![image](./CosmosDBMongoDB.png)
+Azure での MongoDB の利用についての検証ブログになります。
+MongoDBをインストールして利用するのではなく Cosmos DB の Mongo API を利用します。簡単に利用でき マネージドサービス(Cosmos DB) の恩恵も受けられるのでAzureで Mongo DB を利用したい場合の選択肢として魅力的です。
 
-## mongo db on docker
+# (簡単に)Cosmos DBとは
+Azure の NoSQLデータベース、ドキュメント指向データベース
 
-mongo db開始
+※テーブル(スキーマ)設計については、RDBの正規化をベースとした設計ではなくドキュメント指向データベースの特性にあった設計を行う必要があります。
+※RDBのようなトランザクション制御(同一セッション内でのロールバック)が利用できないことを前提に利用する。
+
+# Azure Cosmos DB (mongo api)
+
+https://docs.microsoft.com/ja-jp/azure/cosmos-db/mongodb/connect-using-mongoose
+
+Azure Cosmos DB を作成
 ```
-docker run --rm -p 27017:27017 --name my-mongo1 -d mongo:latest
+az group create -n az-mongodb-example -l japaneast
+#az group delete -n az-mongodb-example
+
+# Create a Cosmos account for MongoDB API
+az cosmosdb create --name my-example01account --resource-group az-mongodb-example --kind MongoDB --server-version 4.0
+
+# Create a DB
+az cosmosdb mongodb database create --account-name my-example01account --resource-group az-mongodb-example --name my-mongo-db1
 ```
 
-mongodb(test db)へ接続
+## collection (option)
+※アプリ側からも作成されるので作成は必須ではない
 ```
-docker run -it --rm mongo mongosh --host 172.21.102.78 test
-```
-
-db.version
-```
-db.version()
-6.0.1
+az cosmosdb mongodb collection create --account-name my-example01account --resource-group az-mongodb-example --database-name my-mongo-db1 --name my-collection1
 ```
 
-dbの確認
+## mongosh (docker cli) の利用 ( CLI での CRUD 操作 )
+
+## [Connect]
+(接続文字列をそのまま利用)
 ```
-test> db
-test
+docker run -it --rm mongo mongosh "mongodb://example02account:xxx ... "
+
+test> db.version()
+4.0.0
+
 test> show dbs
-admin   40.00 KiB
-config  60.00 KiB
-local   40.00 KiB
+my-mongo-db1  1.00 KiB
+
+test> use my-mongo-01
+
+my-mongo-01> db.movies.find()
+[
+  {
+    _id: ObjectId("630d6fa6103545329cd4ae3d"),
+    title: 'Amadeus',
+    year: 1986,
+    score: 9.2,
+    rating: 'R',
+    __v: 0
+  }
+]
 ```
 
-dbの作成 (animalという名前で作成)
-```
-test> use animal
-switched to db animal
-animal> db
-animal
-animal>
-```
-
-### bson
-jsonではなく `bson` (binary JSON) を利用。
-※ `bson` はバイナリとしてデータを扱う
-※ `bson` にはdate型がある
-
-## mongo db CRUD operation
-(簡単に)
-
-```
-docker run -it --rm mongo mongosh --host 172.21.102.78 animalShelter
-```
-
-### [Create]
+## [Create]
 コレクションへデータを投入して取得
 ```
 db.dogs.insertOne({name:'test', age:3, breed:'corgi', catFriendly: true})
@@ -75,19 +84,21 @@ DeprecationWarning: Collection.insert() is deprecated. Use insertOne, insertMany
 ```
 ※ insert() is deprecated
 
-### [Read] db.collection.find({query}) 
+## [Read] db.collection.find({query}) 
 ```完全一致
-db.dogs.find({name:'aaa'})
+db.dogs.find({name:'test'})
 ```
+
 ```
 db.dogs.findOne({name:'bbb'})
 ```
 
-### [Update] db.collection.updateOne updateMany
+## [Update] db.collection.updateOne updateMany
 $set
 ```
-db.dogs.updateOne({name:'aaa'},{$set:{ages:11}})
+db.dogs.updateOne({name:'test'},{$set:{ages:11}})
 ```
+
 $currentDate
 ```
 db.cats.updateOne({name:'aaa'},{$currentDate:{lastModified:true}})
@@ -125,61 +136,11 @@ db.dogs.find({age:{ $in: [1,2,3] }})
 db.dogs.find({age:{ $nin: [1,2,3] }})
 ```
 
-# Azure Cosmos DB (mongo api)
 
-https://docs.microsoft.com/ja-jp/azure/cosmos-db/mongodb/connect-using-mongoose
-
-```
-az group create -n az-mongodb-example -l japaneast
-#az group delete -n az-mongodb-example
-
-# Create a Cosmos account for MongoDB API
-az cosmosdb create --name example02account --resource-group az-mongodb-example --kind MongoDB --server-version 4.0
-```
-
-## azure cosmos db
-```
-az cosmosdb mongodb database create --account-name example02account --resource-group az-mongodb-example --name my-mongo-db1
-```
-
-## collection (option)
-※アプリ側からも作成されるので作成は必須ではない
-```
-az cosmosdb mongodb collection create --account-name example02account --resource-group az-mongodb-example --database-name my-mongo-db1 --name my-collection1
-```
-
-## mongosh (docker cli) を使って接続
-(接続文字列をそのまま利用)
-```
-docker run -it --rm mongo mongosh "mongodb://example02account:xxx ... "
-
-test> db.version()
-4.0.0
-
-test> use my-mongo-01
-
-my-mongo-01> db.movies.find()
-[
-  {
-    _id: ObjectId("630d6fa6103545329cd4ae3d"),
-    title: 'Amadeus',
-    year: 1986,
-    score: 9.2,
-    rating: 'R',
-    __v: 0
-  }
-]
-```
-
-
-## アプリから mongoose を使って操作
+# アプリ(nodejs)から mongoose を使って操作
 mongoose とは node js の ライブラリ。
-ORM と ODM(Document/Data Mapper), モデル定義, CRUD
-REPLの使い方
+
+
 ```
 ```
 
-# Azure で Mongo DB を利用する
-cosmos db
-```
-```
